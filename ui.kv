@@ -1,0 +1,108 @@
+#:import MDDatePicker kivymd.uix.pickers.MDDatePicker
+
+MDScreen:
+    name: "root"
+    MDBoxLayout:
+        orientation: "vertical"
+
+        MDTopAppBar:
+            title: "Caducidad cocina"
+            right_action_items: [["magnify", lambda x: app.open_search()]]
+
+        # --- Filtro por categoría (chips) ---
+        MDBoxLayout:
+            adaptive_height: True
+            padding: dp(8), dp(0), dp(8), dp(8)
+            MDScrollView:
+                do_scroll_y: False
+                MDBoxLayout:
+                    id: cats_box
+                    orientation: "horizontal"
+                    adaptive_height: True
+                    spacing: dp(6)
+                    padding: dp(2)
+
+        # --- Formulario de alta/edición ---
+        MDBoxLayout:
+            padding: dp(12)
+            spacing: dp(8)
+            adaptive_height: True
+            MDTextField:
+                id: nombre_field
+                hint_text: "Alimento"
+                mode: "fill"                  # <- compatible con KivyMD 1.2.0
+                helper_text_mode: "on_focus"
+                on_text_validate: app.open_date_picker()
+            MDTextField:
+                id: cantidad_field
+                hint_text: "Cantidad (opcional)"
+                mode: "fill"                  # <- compatible con KivyMD 1.2.0
+                size_hint_x: .4
+            MDRaisedButton:
+                id: categoria_btn
+                text: app.selected_category_form if app.selected_category_form else "Categoría"
+                on_release: app.open_category_menu(self)
+            MDRaisedButton:
+                text: "Fecha caducidad"
+                on_release: app.open_date_picker()
+            MDRaisedButton:
+                text: "Guardar"
+                on_release: app.save_item()
+
+        # --- Lista ---
+        MDBoxLayout:
+            orientation: "vertical"
+            padding: dp(6)
+            RecycleView:
+                id: rv
+                viewclass: "ItemRow"
+                RecycleBoxLayout:
+                    default_size: None, dp(72)
+                    default_size_hint: 1, None
+                    size_hint_y: None
+                    height: self.minimum_height
+                    orientation: 'vertical'
+
+<ItemRow@MDCard>
+    id_item: 0
+    nombre: ""
+    cantidad: ""
+    caduca: ""
+    categoria: ""
+    radius: dp(12)
+    padding: dp(10)
+    size_hint_y: None
+    height: dp(72)
+    md_bg_color: app.card_color(root.caduca)
+
+    MDBoxLayout:
+        spacing: dp(10)
+        MDLabel:
+            text: f"[b]{root.nombre}[/b]" if root.nombre else ""
+            markup: True
+            halign: "left"
+        MDLabel:
+            text: root.cantidad if root.cantidad else ""
+            size_hint_x: .22
+            halign: "center"
+        MDLabel:
+            text: root.categoria if root.categoria else ""
+            size_hint_x: .26
+            halign: "center"
+        MDLabel:
+            text: app.format_date_display(root.caduca)
+            size_hint_x: .28
+            halign: "right"
+
+    MDIconButton:
+        icon: "pencil"
+        pos_hint: {"center_y": .5}
+        on_release: app.open_edit(root.id_item, root.nombre, root.cantidad, root.caduca, root.categoria)
+        md_bg_color: 0,0,0,0
+        theme_text_color: "Secondary"
+
+    MDIconButton:
+        icon: "delete"
+        pos_hint: {"center_y": .5}
+        on_release: app.delete_item(root.id_item)
+        theme_text_color: "Error"
