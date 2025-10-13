@@ -13,7 +13,7 @@ android.api = 33
 android.minapi = 24
 android.archs = arm64-v8a, armeabi-v7a
 
-# Servicio (si tienes service_check.py)
+# Si tienes un servicio en segundo plano
 services = service_check:service
 
 [android]
