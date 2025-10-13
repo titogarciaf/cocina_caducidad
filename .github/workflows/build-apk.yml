@@ -14,6 +14,7 @@ jobs:
       ANDROID_HOME: ${{ github.workspace }}/android-sdk
       ANDROID_BUILD_TOOLS: "33.0.2"
       ANDROID_PLATFORM: "android-33"
+      ANDROID_NDK_VERSION: "25.2.9519653"
 
     steps:
       - name: Checkout
@@ -30,7 +31,6 @@ jobs:
         with:
           python-version: "3.11"
 
-      # MÍNIMOS del sistema que necesita buildozer/p4a
       - name: Install minimal system deps (git/zip/unzip)
         run: |
           sudo apt-get update
@@ -41,8 +41,8 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install buildozer Cython virtualenv
 
-      # Instala Android SDK + build-tools (incluye 'aidl')
-      - name: Install Android SDK + build-tools (aidl)
+      # Instalamos SDK + NDK y aceptamos licencias (en NUESTRA ruta)
+      - name: Install Android SDK/NDK + accept licenses
         run: |
           mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
           cd "$ANDROID_SDK_ROOT"
@@ -52,25 +52,44 @@ jobs:
           rm cmdline-tools.zip
 
           export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH"
-          yes | sdkmanager --licenses >/dev/null
-          sdkmanager "platform-tools" "platforms;${ANDROID_PLATFORM}" "build-tools;${ANDROID_BUILD_TOOLS}"
 
-          # debug opcional
-          ls -l "$ANDROID_SDK_ROOT/build-tools/${ANDROID_BUILD_TOOLS}/aidl" || true
+          yes | sdkmanager --licenses >/dev/null
+
+          sdkmanager "platform-tools" \
+                     "platforms;${ANDROID_PLATFORM}" \
+                     "build-tools;${ANDROID_BUILD_TOOLS}" \
+                     "ndk;${ANDROID_NDK_VERSION}"
+
+          # Marcar variables para p4a/buildozer
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/${ANDROID_NDK_VERSION}" >> $GITHUB_ENV
+          echo "ANDROIDNDK=$ANDROID_SDK_ROOT/ndk/${ANDROID_NDK_VERSION}" >> $GITHUB_ENV
+          echo "ANDROIDSDK=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+
+          # Comprobaciones rápidas
+          ls -l "$ANDROID_SDK_ROOT/build-tools/${ANDROID_BUILD_TOOLS}/aidl" || exit 1
+          ls -d "$ANDROID_SDK_ROOT/ndk/${ANDROID_NDK_VERSION}" || exit 1
 
       - name: Clean previous builds
         run: |
           rm -rf .buildozer bin
-          
-      - name: Build debug APK
+
+      - name: Build debug APK (force external SDK/NDK)
         env:
           ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
+          ANDROIDNDK: ${{ env.ANDROIDNDK }}
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
+          ANDROIDSDK: ${{ env.ANDROIDSDK }}
         run: |
-          # Añade herramientas del SDK *encima* del PATH existente (sin borrarlo)
+          # Añadimos herramientas del SDK delante sin romper PATH del runner (git vive en /usr/bin)
           export PATH="$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/build-tools/${ANDROID_BUILD_TOOLS}:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH"
-          which git || (echo "git no está en PATH"; exit 1)
-          git --version
+
+          # Diagnóstico rápido
+          which git && git --version
+          which sdkmanager
+          "${ANDROID_SDK_ROOT}/build-tools/${ANDROID_BUILD_TOOLS}/aidl" -v || true
+
+          # Lanzar build (p4a/Buildozer usarán ANDROIDSDK/ANDROIDNDK)
           buildozer -v android debug
 
       - name: Upload APK artifact
