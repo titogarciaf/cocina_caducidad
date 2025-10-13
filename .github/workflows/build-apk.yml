@@ -61,13 +61,16 @@ jobs:
       - name: Clean previous builds
         run: |
           rm -rf .buildozer bin
-
+          
       - name: Build debug APK
         env:
           ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
-          PATH: ${{ env.ANDROID_SDK_ROOT }}/platform-tools:${{ env.ANDROID_SDK_ROOT }}/build-tools/${{ env.ANDROID_BUILD_TOOLS }}:${{ env.ANDROID_SDK_ROOT }}/cmdline-tools/latest/bin:${{ env.PATH }}
         run: |
+          # Añade herramientas del SDK *encima* del PATH existente (sin borrarlo)
+          export PATH="$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/build-tools/${ANDROID_BUILD_TOOLS}:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH"
+          which git || (echo "git no está en PATH"; exit 1)
+          git --version
           buildozer -v android debug
 
       - name: Upload APK artifact
