@@ -20,7 +20,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ⬅️ Java 17 (necesario para sdkmanager = class file 61)
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
@@ -42,6 +41,7 @@ jobs:
           python -m pip install --upgrade pip wheel
           python -m pip install "buildozer==1.5.0" "python-for-android==2024.1.21" "Cython>=3.0" virtualenv
 
+      # Preparar SDK/NDK y aceptar licencias
       - name: Prepare Android SDK and NDK
         run: |
           mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
@@ -54,17 +54,34 @@ jobs:
           export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH"
           yes | sdkmanager --licenses >/dev/null
 
+          # Instalamos build-tools 33.0.2 (nuestra elección) y 36.1.0 (por si p4a/gradle la pide)
           sdkmanager "platform-tools" \
                      "platforms;${ANDROID_PLATFORM}" \
                      "build-tools;${ANDROID_BUILD_TOOLS}" \
-                     "ndk;${ANDROID_NDK_VERSION}" \
-                     "extras;google;m2repository" \
-                     "extras;android;m2repository"
+                     "build-tools;36.1.0" \
+                     "ndk;${ANDROID_NDK_VERSION}"
 
-          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/${ANDROID_NDK_VERSION}" >> $GITHUB_ENV
-          echo "BUILDOZER_ANDROID_SDK_PATH=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
-          echo "BUILDOZER_ANDROID_NDK_PATH=$ANDROID_SDK_ROOT/ndk/${ANDROID_NDK_VERSION}" >> $GITHUB_ENV
-          echo "GRADLE_OPTS=-Dorg.gradle.jvmargs='-Xmx2g -Dfile.encoding=UTF-8'" >> $GITHUB_ENV
+          # Variables para p4a/buildozer
+          {
+            echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/${ANDROID_NDK_VERSION}";
+            echo "BUILDOZER_ANDROID_SDK_PATH=$ANDROID_SDK_ROOT";
+            echo "BUILDOZER_ANDROID_NDK_PATH=$ANDROID_SDK_ROOT/ndk/${ANDROID_NDK_VERSION}";
+            echo "GRADLE_OPTS=-Dorg.gradle.jvmargs='-Xmx2g -Dfile.encoding=UTF-8'";
+          } >> $GITHUB_ENV
+
+          # Comprobaciones
+          ls -l "$ANDROID_SDK_ROOT/build-tools/33.0.2/aidl"
+          ls -l "$ANDROID_SDK_ROOT/build-tools/36.1.0/aidl"
+          ls -d "$ANDROID_SDK_ROOT/ndk/${ANDROID_NDK_VERSION}"
+
+      # Borramos el SDK interno de Buildozer y lo enlazamos a nuestro SDK preparado
+      - name: Point Buildozer internal SDK to our SDK (symlink)
+        run: |
+          rm -rf "$HOME/.buildozer/android/platform/android-sdk"
+          mkdir -p "$HOME/.buildozer/android/platform"
+          ln -s "$ANDROID_SDK_ROOT" "$HOME/.buildozer/android/platform/android-sdk"
+          # Mostrar a dónde apunta
+          ls -l "$HOME/.buildozer/android/platform/"
 
       - name: Clean previous builds
         run: rm -rf .buildozer bin
