@@ -12,8 +12,6 @@ fullscreen = 0
 android.api = 33
 android.minapi = 24
 android.archs = arm64-v8a, armeabi-v7a
-
-# Si tienes un servicio en segundo plano
 services = service_check:service
 
 [android]
