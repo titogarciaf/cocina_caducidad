@@ -12,7 +12,6 @@ jobs:
     env:
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
       ANDROID_HOME: ${{ github.workspace }}/android-sdk
-      # versión de build-tools con aidl
       ANDROID_BUILD_TOOLS: "33.0.2"
       ANDROID_PLATFORM: "android-33"
 
@@ -31,12 +30,18 @@ jobs:
         with:
           python-version: "3.11"
 
+      # MÍNIMOS del sistema que necesita buildozer/p4a
+      - name: Install minimal system deps (git/zip/unzip)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git zip unzip
+
       - name: Install build tools (pip)
         run: |
           python -m pip install --upgrade pip
           python -m pip install buildozer Cython virtualenv
 
-      # Instala Android SDK (cmdline-tools) + acepta licencias + build-tools (aidl) + platform-tools
+      # Instala Android SDK + build-tools (incluye 'aidl')
       - name: Install Android SDK + build-tools (aidl)
         run: |
           mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
@@ -50,15 +55,13 @@ jobs:
           yes | sdkmanager --licenses >/dev/null
           sdkmanager "platform-tools" "platforms;${ANDROID_PLATFORM}" "build-tools;${ANDROID_BUILD_TOOLS}"
 
-          # muestra dónde quedó aidl para depurar
+          # debug opcional
           ls -l "$ANDROID_SDK_ROOT/build-tools/${ANDROID_BUILD_TOOLS}/aidl" || true
 
-      # Limpia restos previos por si el intento anterior dejó estado inconsistente
       - name: Clean previous builds
         run: |
           rm -rf .buildozer bin
 
-      # Ejecuta buildozer usando el SDK que ya instalamos
       - name: Build debug APK
         env:
           ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
