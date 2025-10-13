@@ -13,25 +13,41 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y zip unzip openjdk-17-jdk python3-pip python3-venv \
-             pkg-config libffi-dev libssl-dev libncurses5
-          python3 -m pip install --upgrade pip
+      # Java 17 para el toolchain Android
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
 
-      - name: Install Buildozer toolchain
-        run: |
-          python3 -m pip install buildozer Cython virtualenv
+      # Python 3.x limpio
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
+      # (Opcional) Normaliza finales de línea por si subiste CRLF desde Windows
+      - name: Normalize line endings
+        run: |
+          git ls-files | xargs -I{} bash -c 'sed -i "s/\r$//" "{}"'
+
+      # No instalamos mil paquetes del sistema: solo pip + buildozer
+      - name: Install build tools (pip)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install buildozer Cython virtualenv
+
+      # Limpieza previa
       - name: Clean previous builds
         run: |
           rm -rf .buildozer bin
 
+      # Build APK (Buildozer descargará SDK/NDK/Gradle solo)
       - name: Build debug APK
         run: |
           buildozer -v android debug
 
+      # Publica el APK como artefacto
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
