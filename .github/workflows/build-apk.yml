@@ -20,28 +20,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Java 17
+      # Java 11 es la combinación más estable hoy con p4a/gradle en CI
+      - name: Set up Java 11
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "11"
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install minimal system deps (git/zip/unzip)
+      - name: Install minimal system deps
         run: |
           sudo apt-get update
           sudo apt-get install -y git zip unzip
 
-      - name: Install build tools (pip)
+      - name: Install build tools (pip) - pin stable versions
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install buildozer Cython virtualenv
+          python -m pip install --upgrade pip wheel
+          # Fijamos buildozer y p4a a versiones estables
+          python -m pip install "buildozer==1.5.0" "python-for-android==2024.06.1" "Cython>=3.0" virtualenv
 
-      # ⚠️ Elimina el SDK interno de Buildozer en $HOME para que NO lo use
+      # Evita que buildozer use su SDK interno con licencias no aceptadas
       - name: Purge runner HOME .buildozer
         run: |
           rm -rf "$HOME/.buildozer"
@@ -62,20 +64,24 @@ jobs:
           sdkmanager "platform-tools" \
                      "platforms;${ANDROID_PLATFORM}" \
                      "build-tools;${ANDROID_BUILD_TOOLS}" \
-                     "ndk;${ANDROID_NDK_VERSION}"
+                     "ndk;${ANDROID_NDK_VERSION}" \
+                     "extras;google;m2repository" \
+                     "extras;android;m2repository"
 
-          # Variables que Buildozer/P4A sí respetan
+          # Variables que p4a/buildozer sí respetan
           {
             echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/${ANDROID_NDK_VERSION}";
             echo "ANDROIDNDK=$ANDROID_SDK_ROOT/ndk/${ANDROID_NDK_VERSION}";
             echo "ANDROIDSDK=$ANDROID_SDK_ROOT";
             echo "BUILDOZER_ANDROID_SDK_PATH=$ANDROID_SDK_ROOT";
             echo "BUILDOZER_ANDROID_NDK_PATH=$ANDROID_SDK_ROOT/ndk/${ANDROID_NDK_VERSION}";
+            # Gradle memoria y codificación
+            echo "GRADLE_OPTS=-Dorg.gradle.jvmargs='-Xmx2g -Dfile.encoding=UTF-8'";
           } >> $GITHUB_ENV
 
           # Comprobaciones
-          ls -l "$ANDROID_SDK_ROOT/build-tools/${ANDROID_BUILD_TOOLS}/aidl" || exit 1
-          ls -d "$ANDROID_SDK_ROOT/ndk/${ANDROID_NDK_VERSION}" || exit 1
+          ls -l "$ANDROID_SDK_ROOT/build-tools/${ANDROID_BUILD_TOOLS}/aidl"
+          ls -d "$ANDROID_SDK_ROOT/ndk/${ANDROID_NDK_VERSION}"
 
       - name: Clean previous builds
         run: |
@@ -90,6 +96,7 @@ jobs:
           ANDROIDSDK: ${{ env.ANDROIDSDK }}
           BUILDOZER_ANDROID_SDK_PATH: ${{ env.BUILDOZER_ANDROID_SDK_PATH }}
           BUILDOZER_ANDROID_NDK_PATH: ${{ env.BUILDOZER_ANDROID_NDK_PATH }}
+          GRADLE_OPTS: ${{ env.GRADLE_OPTS }}
         run: |
           # Añade herramientas del SDK sin perder /usr/bin (git)
           export PATH="$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/build-tools/${ANDROID_BUILD_TOOLS}:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH"
@@ -98,6 +105,7 @@ jobs:
           which sdkmanager
           "${ANDROID_SDK_ROOT}/build-tools/${ANDROID_BUILD_TOOLS}/aidl" -v || true
 
+          # Build
           buildozer -v android debug
 
       - name: Upload APK artifact
