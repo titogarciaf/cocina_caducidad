@@ -12,12 +12,15 @@ fullscreen = 0
 android.api = 33
 android.minapi = 24
 android.archs = arm64-v8a, armeabi-v7a
+
+# si tienes service_check.py
 services = service_check:service
 
 [android]
 android.build_tools_version = 33.0.2
 android.permissions = FOREGROUND_SERVICE, WAKE_LOCK, RECEIVE_BOOT_COMPLETED, POST_NOTIFICATIONS
 android.logcat_filter = *:S python:D
+android.accept_sdk_license = True
 
 [buildozer]
 log_level = 2
