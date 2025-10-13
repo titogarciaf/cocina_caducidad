@@ -9,16 +9,12 @@ requirements = python3,kivy==2.3.0,kivymd==1.2.0,plyer,android,pyjnius,sqlite3
 orientation = portrait
 fullscreen = 0
 
-# Android target/min/arch
 android.api = 33
 android.minapi = 24
 android.archs = arm64-v8a, armeabi-v7a
-
-# Si tienes service_check.py
 services = service_check:service
 
 [android]
-# Build-tools fija para p4a, pero el workflow instala también 36.1.0 por si Gradle la pide
 android.build_tools_version = 33.0.2
 android.permissions = FOREGROUND_SERVICE, WAKE_LOCK, RECEIVE_BOOT_COMPLETED, POST_NOTIFICATIONS
 android.logcat_filter = *:S python:D
